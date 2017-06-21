@@ -18,7 +18,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -43,7 +42,6 @@ import ru.adonixis.lightbox.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Lightbox";
-    //private BluetoothAdapter mBluetoothAdapter;
     private BluetoothSocket mmSocket;
     private BluetoothDevice mmDevice;
     private OutputStream mmOutputStream;
@@ -54,17 +52,10 @@ public class MainActivity extends AppCompatActivity {
     private byte[] readBuffer;
     private int readBufferPosition;
     private volatile boolean stopWorker;
-    //private int alpha, red, green, blue;
-    private int mode, currentAlpha, currentRed, currentGreen, currentBlue;
+    private char mode;
     private int countSegments;
     private int[] currentPixelsColorsArray;
     private int[] pixelsColorsArray;
-    private int[] startPixelArray;
-    private int[] countPixelsArray;
-    private int[] alphaArray;
-    private int[] redArray;
-    private int[] greenArray;
-    private int[] blueArray;
     private int model, startCorner, allPixelsCount, leftPixelsCount, topPixelsCount, rightPixelsCount, bottomPixelsCount;
     private boolean clockwise;
     private ActivityMainBinding mActivityMainBinding;
@@ -84,15 +75,9 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 isLongClick = false;
                 System.arraycopy(currentPixelsColorsArray, 0, pixelsColorsArray, 0, currentPixelsColorsArray.length);
-/*                if (currentRed == 0 && currentGreen == 0 && currentBlue == 0) {
-                    currentRed = 255;
-                    currentGreen = 255;
-                    currentBlue = 255;
-                }*/
                 ColorPickerDialogBuilder
                         .with(MainActivity.this)
                         .setTitle("Choose color")
-                        //.initialColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue))
                         .initialColor(currentPixelsColorsArray[0])
                         .wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
                         .density(16)
@@ -107,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
                         .setOnColorChangedListener(new OnColorChangedListener() {
                             @Override
                             public void onColorChanged(int selectedColor) {
-                                if ((System.currentTimeMillis() - lastTime) > 200) {
+                                if ((System.currentTimeMillis() - lastTime) > 100) {
                                     lastTime = System.currentTimeMillis();
 
                                     int alpha = Color.alpha(selectedColor);
@@ -148,21 +133,15 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                         tempCommand += startPixel + " " + countPixels + " " + Color.alpha(prevColor) + " " + Color.red(prevColor) + " " + Color.green(prevColor) + " " + Color.blue(prevColor);
 
-                                        command = "1 " + countSegments + " " + tempCommand + '\n';
+                                        command = "s " + countSegments + " " + tempCommand + '\n';
                                     } else {
                                         Arrays.fill(pixelsColorsArray, Color.argb(alpha, red, green, blue));
-                                        command = "1 1 0 " + allPixelsCount + " " +  alpha + " " + red + " " + green + " " + blue + '\n';
+                                        command = "s 1 0 " + allPixelsCount + " " +  alpha + " " + red + " " + green + " " + blue + '\n';
                                     }
-
-                                    //float ratio = alpha/255f;
-                                    //final String command = "0 " + (int) (red * ratio) + ' ' + (int) (green * ratio) + ' ' + (int) (blue * ratio) + '\n';
-                                    //final String command = "0 " + alpha + ' ' + red + ' ' + green + ' ' + blue + '\n';
 
                                     Log.d(TAG, "onColorChanged: " + command);
 
                                     try {
-                                        //mmOutputStream.write(command.getBytes());
-                                        //mmOutputStream.flush();
                                         streamWriter.write(command);
                                         streamWriter.flush();
                                     } catch (IOException e) {
@@ -189,26 +168,6 @@ public class MainActivity extends AppCompatActivity {
                                     gradientDrawable.mutate();
                                     gradientDrawable.setColor(currentPixelsColorsArray[i]);
                                 }
-/*
-                                int alpha = Color.alpha(selectedColor);
-                                int red = Color.red(selectedColor);
-                                int green = Color.green(selectedColor);
-                                int blue = Color.blue(selectedColor);
-                                currentAlpha = alpha;
-                                currentRed = red;
-                                currentGreen = green;
-                                currentBlue = blue;
-                                mActivityMainBinding.imageLightbox.setBackgroundColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
-*/
-
-/*
-                                for (int i = 0; i < allPixelsCount; i++) {
-                                    View led = mActivityMainBinding.relativeLayout.findViewWithTag("LED" + i);
-                                    GradientDrawable gradientDrawable = (GradientDrawable) led.getBackground();
-                                    gradientDrawable.mutate();
-                                    gradientDrawable.setColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
-                                }
-                                */
                             }
                         })
                         .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -230,35 +189,26 @@ public class MainActivity extends AppCompatActivity {
                                 }
 
                                 final String command;
-                                //if (isSegment) {
-                                    String tempCommand = "";
-                                    int countSegments = 1;
-                                    int startPixel = 0;
-                                    int countPixels = 1;
-                                    int prevColor = currentPixelsColorsArray[0];
-                                    for (int i = 1; i < allPixelsCount; i++) {
-                                        if (prevColor == currentPixelsColorsArray[i]) {
-                                            countPixels++;
-                                        } else {
-                                            tempCommand += startPixel + " " + countPixels + " " + Color.alpha(prevColor) + " " + Color.red(prevColor) + " " + Color.green(prevColor) + " " + Color.blue(prevColor) + " ";
-                                            prevColor = currentPixelsColorsArray[i];
-                                            countSegments++;
-                                            startPixel = i;
-                                            countPixels = 1;
-                                        }
+                                String tempCommand = "";
+                                int countSegments = 1;
+                                int startPixel = 0;
+                                int countPixels = 1;
+                                int prevColor = currentPixelsColorsArray[0];
+                                for (int i = 1; i < allPixelsCount; i++) {
+                                    if (prevColor == currentPixelsColorsArray[i]) {
+                                        countPixels++;
+                                    } else {
+                                        tempCommand += startPixel + " " + countPixels + " " + Color.alpha(prevColor) + " " + Color.red(prevColor) + " " + Color.green(prevColor) + " " + Color.blue(prevColor) + " ";
+                                        prevColor = currentPixelsColorsArray[i];
+                                        countSegments++;
+                                        startPixel = i;
+                                        countPixels = 1;
                                     }
-                                    tempCommand += startPixel + " " + countPixels + " " + Color.alpha(prevColor) + " " + Color.red(prevColor) + " " + Color.green(prevColor) + " " + Color.blue(prevColor);
+                                }
+                                tempCommand += startPixel + " " + countPixels + " " + Color.alpha(prevColor) + " " + Color.red(prevColor) + " " + Color.green(prevColor) + " " + Color.blue(prevColor);
 
-                                    command = "1 " + countSegments + " " + tempCommand + '\n';
-                                //} else {
-                                //    command = "1 1 0 " + allPixelsCount + " " +  Color.alpha(currentPixelsColorsArray[0]) + " " + Color.red(currentPixelsColorsArray[0]) + " " + Color.green(currentPixelsColorsArray[0]) + " " + Color.blue(currentPixelsColorsArray[0]) + '\n';
-                                //}
-
-                                //final String command = "0 " + currentAlpha + ' ' + currentRed + ' ' + currentGreen + ' ' + currentBlue + '\n';
-                                //final String command = "1 1 0 " + allPixelsCount + ' ' + currentAlpha + ' ' + currentRed + ' ' + currentGreen + ' ' + currentBlue + '\n';
+                                command = "s " + countSegments + " " + tempCommand + '\n';
                                 try {
-                                    //mmOutputStream.write(command.getBytes());
-                                    //mmOutputStream.flush();
                                     streamWriter.write(command);
                                     streamWriter.flush();
                                 } catch (IOException e) {
@@ -274,13 +224,11 @@ public class MainActivity extends AppCompatActivity {
         findBT();
         try {
             openBT();
-            streamWriter.write("77\n");
+            streamWriter.write("?\n");
             streamWriter.flush();
         } catch (IOException ex) {
             Log.e(TAG, "openBT: ", ex);
-            if (BuildConfig.DEBUG) {
-                Toast.makeText(MainActivity.this, "Check Bluetooth device", Toast.LENGTH_SHORT).show();
-            }
+            Toast.makeText(MainActivity.this, "Check Bluetooth device", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -298,9 +246,7 @@ public class MainActivity extends AppCompatActivity {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             Log.d(TAG, "findBT: No bluetooth adapter available");
-            if (BuildConfig.DEBUG) {
-                Toast.makeText(MainActivity.this, "findBT: No bluetooth adapter available", Toast.LENGTH_SHORT).show();
-            }
+            Toast.makeText(MainActivity.this, "No bluetooth adapter available", Toast.LENGTH_SHORT).show();
         } else {
             if (!mBluetoothAdapter.isEnabled()) {
                 Intent intentEnableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -318,33 +264,17 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (mmDevice == null) {
                     Log.d(TAG, "findBT: No paired devices");
-                    if (BuildConfig.DEBUG) {
-                        Toast.makeText(MainActivity.this, "findBT: No paired devices", Toast.LENGTH_SHORT).show();
-                    }
+                    Toast.makeText(MainActivity.this, "No paired devices", Toast.LENGTH_SHORT).show();
 
                     Intent intentOpenBluetoothSettings = new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
                     intentOpenBluetoothSettings.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivityForResult(intentOpenBluetoothSettings, 1);
                 } else {
                     Log.d(TAG, "findBT: Bluetooth Device Found");
-                    if (BuildConfig.DEBUG) {
-                        Toast.makeText(MainActivity.this, "findBT: Bluetooth Device Found", Toast.LENGTH_SHORT).show();
-                    }
                 }
             } else {
                 Log.d(TAG, "findBT: No paired devices");
-                if (BuildConfig.DEBUG) {
-                    Toast.makeText(MainActivity.this, "findBT: No paired devices", Toast.LENGTH_SHORT).show();
-                }
-/*
-
-                Intent intent = new Intent(Intent.ACTION_MAIN, null);
-                intent.addCategory(Intent.CATEGORY_LAUNCHER);
-                ComponentName cn = new ComponentName("com.android.settings", "com.android.settings.bluetooth.BluetoothSettings");
-                intent.setComponent(cn);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-*/
+                Toast.makeText(MainActivity.this, "No paired devices", Toast.LENGTH_SHORT).show();
 
                 Intent intentOpenBluetoothSettings = new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
                 intentOpenBluetoothSettings.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -354,15 +284,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private  void openBT() throws IOException {
-        //UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //Standard SerialPortService ID
         if (mmDevice != null) {
             ParcelUuid[] supportedUuids = mmDevice.getUuids();
             UUID uuid = supportedUuids[0].getUuid();
             mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
-            //        if (mmSocket == null) {
-            //            Method createMethod = mmDevice.getClass().getMethod("createInsecureRfcommSocket", new Class[] { int.class });
-            //            mmSocket = (BluetoothSocket) createMethod.invoke(mmDevice, 1);
-            //        }
+//            if (mmSocket == null) {
+//                Method createMethod = mmDevice.getClass().getMethod("createInsecureRfcommSocket", new Class[] { int.class });
+//                mmSocket = (BluetoothSocket) createMethod.invoke(mmDevice, 1);
+//            }
             mmSocket.connect();
             mmOutputStream = mmSocket.getOutputStream();
             streamWriter = new OutputStreamWriter(mmOutputStream);
@@ -372,9 +301,6 @@ public class MainActivity extends AppCompatActivity {
             beginListenForData();
 
             Log.d(TAG, "openBT: Bluetooth Opened");
-            if (BuildConfig.DEBUG) {
-                Toast.makeText(MainActivity.this, "openBT: Bluetooth Opened", Toast.LENGTH_SHORT).show();
-            }
         }
     }
 
@@ -402,18 +328,18 @@ public class MainActivity extends AppCompatActivity {
                                     readBufferPosition = 0;
                                     if (data.startsWith("Info:")) {
                                         String[] strParams = data.substring(6).split("\\s+");
-                                        int[] params = new int[strParams.length];
-                                        for (int j = 0; j < strParams.length; j++) {
-                                            params[j] = Integer.parseInt(strParams[j]);
-                                        }
-                                        model = params[0];
-                                        startCorner = params[1];
-                                        clockwise = params[2] == 0;
-                                        allPixelsCount = params[3];
-                                        leftPixelsCount = params[4];
-                                        topPixelsCount = params[5];
-                                        rightPixelsCount = params[6];
-                                        bottomPixelsCount = params[7];
+//                                        int[] params = new int[strParams.length];
+//                                        for (int j = 0; j < strParams.length; j++) {
+//                                            params[j] = Integer.parseInt(strParams[j]);
+//                                        }
+                                        model = Integer.parseInt(strParams[0]);
+                                        startCorner = Integer.parseInt(strParams[1]);
+                                        clockwise = Integer.parseInt(strParams[2]) == 0;
+                                        allPixelsCount = Integer.parseInt(strParams[3]);
+                                        leftPixelsCount = Integer.parseInt(strParams[4]);
+                                        topPixelsCount = Integer.parseInt(strParams[5]);
+                                        rightPixelsCount = Integer.parseInt(strParams[6]);
+                                        bottomPixelsCount = Integer.parseInt(strParams[7]);
 
                                         currentPixelsColorsArray = new int[allPixelsCount];
                                         pixelsColorsArray = new int[allPixelsCount];
@@ -431,37 +357,17 @@ public class MainActivity extends AppCompatActivity {
                                             }
                                         });
 
-                                        mode = params[8];
+                                        mode = strParams[8].charAt(0);
                                         switch (mode) {
-                                            case 0:
-                                                currentAlpha = params[9];
-                                                currentRed = params[10];
-                                                currentGreen = params[11];
-                                                currentBlue = params[12];
-                                                Arrays.fill(currentPixelsColorsArray, 0, allPixelsCount, Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
-                                                runOnUiThread(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        mActivityMainBinding.imageLightbox.setBackgroundColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
-                                                    }
-                                                });
-                                                break;
-                                            case 1:
-                                                countSegments = params[9];
+                                            case 's':
+                                                countSegments = Integer.parseInt(strParams[9]);
                                                 for (int j = 0; j < countSegments; j++) {
-//                                                    startPixelArray[j] = params[10 + j*6];
-//                                                    countPixelsArray[j] = params[11 + j*6];
-//                                                    alphaArray[j] = params[12 + j*6];
-//                                                    redArray[j] = params[13 + j*6];
-//                                                    greenArray[j] = params[14 + j*6];
-//                                                    blueArray[j] = params[15 + j*6];
-
-                                                    final int startPixel = params[10 + j*6];
-                                                    final int countPixels = params[11 + j*6];
-                                                    final int alpha = params[12 + j*6];
-                                                    final int red = params[13 + j*6];
-                                                    final int green = params[14 + j*6];
-                                                    final int blue = params[15 + j*6];
+                                                    final int startPixel = Integer.parseInt(strParams[10 + j*6]);
+                                                    final int countPixels = Integer.parseInt(strParams[11 + j*6]);
+                                                    final int alpha = Integer.parseInt(strParams[12 + j*6]);
+                                                    final int red = Integer.parseInt(strParams[13 + j*6]);
+                                                    final int green = Integer.parseInt(strParams[14 + j*6]);
+                                                    final int blue = Integer.parseInt(strParams[15 + j*6]);
 
                                                     Arrays.fill(currentPixelsColorsArray, startPixel, startPixel + countPixels, Color.argb(alpha, red, green, blue));
 
@@ -469,10 +375,6 @@ public class MainActivity extends AppCompatActivity {
                                                         @Override
                                                         public void run() {
                                                             if (countSegments == 1 && countPixels == allPixelsCount) {
-                                                                currentAlpha = alpha;
-                                                                currentRed = red;
-                                                                currentGreen = green;
-                                                                currentBlue = blue;
                                                                 mActivityMainBinding.imageLightbox.setBackgroundColor(Color.argb(alpha, red, green, blue));
                                                             }
                                                             segmentLEDs(startPixel, countPixels, alpha, red, green, blue);
@@ -485,9 +387,6 @@ public class MainActivity extends AppCompatActivity {
                                     handler.post(new Runnable() {
                                         public void run() {
                                             Log.d(TAG, "listenData: " + data);
-                                            if (BuildConfig.DEBUG) {
-                                                Toast.makeText(MainActivity.this, "listenData: " + data, Toast.LENGTH_SHORT).show();
-                                            }
                                         }
                                     });
                                 } else {
@@ -506,24 +405,12 @@ public class MainActivity extends AppCompatActivity {
         workerThread.start();
     }
 
-    /*
-    void sendData() throws IOException {
-        String msg = mActivityMainBinding.entry.getText().toString();
-        msg += "\n";
-        mmOutputStream.write(msg.getBytes());
-        mActivityMainBinding.label.setText("Data Sent");
-    }
-    */
-
     private void closeBT() throws IOException {
         stopWorker = true;
         mmOutputStream.close();
         mmInputStream.close();
         mmSocket.close();
         Log.d(TAG, "closeBT: Bluetooth Closed");
-        if (BuildConfig.DEBUG) {
-            Toast.makeText(MainActivity.this, "closeBT: Bluetooth Closed", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
@@ -542,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
         final String command;
         switch (id) {
             case R.id.action_rainbow:
-                command = "3\n";
+                command = "r\n";
                 try {
                     streamWriter.write(command);
                     streamWriter.flush();
@@ -551,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             case R.id.action_rainbow_cycle:
-                command = "2\n";
+                command = "c\n";
                 try {
                     streamWriter.write(command);
                     streamWriter.flush();
@@ -560,34 +447,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
         }
-
-/*
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            final String command = "1 12 " +
-                    "0 5 255 255 0 0 " +
-                    "5 5 255 0 255 0 " +
-                    "10 5 255 0 0 255 " +
-                    "15 5 255 255 0 0 " +
-                    "20 5 255 0 255 0 " +
-                    "25 5 255 0 0 255 " +
-                    "30 5 255 255 0 0 " +
-                    "35 5 255 0 255 0 " +
-                    "40 5 255 0 0 255 " +
-                    "45 5 255 255 0 0 " +
-                    "50 5 255 0 255 0 " +
-                    "55 3 255 0 0 255" +
-                    '\n';
-            try {
-                streamWriter.write(command);
-                streamWriter.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return true;
-        }
-*/
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -600,7 +459,7 @@ public class MainActivity extends AppCompatActivity {
         int topLEDSize = width / topPixelsCount;
         int bottomLEDSize = width / bottomPixelsCount;
 
-        int minLEDsize = Math.min(Math.min(leftLEDSize, rightLEDSize), Math.min(topLEDSize, bottomLEDSize)) - 20;
+        int minLEDsize = (int) (Math.min(Math.min(leftLEDSize, rightLEDSize), Math.min(topLEDSize, bottomLEDSize)) * 0.8f);
 
         int height = tempHeight - minLEDsize - minLEDsize;
 
@@ -637,10 +496,6 @@ public class MainActivity extends AppCompatActivity {
             public boolean onLongClick(View v) {
                 if (!isLongClick) {
                     isLongClick = true;
-
-                    //GradientDrawable gradientDrawable = (GradientDrawable) v.getBackground();
-                    //gradientDrawable.mutate();
-                    //gradientDrawable.setColor(Color.GRAY);
                     v.setScaleX(0.8f);
                     v.setScaleY(0.8f);
                 }
@@ -648,9 +503,6 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-//        RelativeLayout.LayoutParams paramsTop = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, minLEDsize);
-//        paramsTop.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-//        mActivityMainBinding.layoutTop.setLayoutParams(paramsTop);
         for (int i = 0; i < topPixelsCount; i++) {
             final View circleView = new View(MainActivity.this);
             LinearLayout.LayoutParams paramsCircleView = new LinearLayout.LayoutParams(minLEDsize, minLEDsize);
@@ -713,19 +565,14 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 }
             };
-            circleView.generateViewId();
             circleView.setOnTouchListener(onTouchListener);
 */
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
-            gradientDrawable.setColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
 
             mActivityMainBinding.layoutTop.addView(circleView);
         }
 
-//        RelativeLayout.LayoutParams paramsBottom = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, minLEDsize);
-//        paramsBottom.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-//        mActivityMainBinding.layoutBottom.setLayoutParams(paramsBottom);
         for (int i = 0; i < bottomPixelsCount; i++) {
             View circleView = new View(MainActivity.this);
             LinearLayout.LayoutParams paramsCircleView = new LinearLayout.LayoutParams(minLEDsize, minLEDsize);
@@ -773,17 +620,10 @@ public class MainActivity extends AppCompatActivity {
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
-            gradientDrawable.setColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
 
             mActivityMainBinding.layoutBottom.addView(circleView);
         }
-//
-//        RelativeLayout.LayoutParams paramsLeft = new RelativeLayout.LayoutParams(minLEDsize, RelativeLayout.LayoutParams.MATCH_PARENT);
-//        paramsLeft.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-//        paramsLeft.addRule(RelativeLayout.ALIGN_PARENT_START);
-//        paramsLeft.addRule(RelativeLayout.BELOW, R.id.layout_top);
-//        paramsLeft.addRule(RelativeLayout.ABOVE, R.id.layout_bottom);
-//        mActivityMainBinding.layoutLeft.setLayoutParams(paramsLeft);
+
         for (int i = 0; i < leftPixelsCount; i++) {
             View circleView = new View(MainActivity.this);
             LinearLayout.LayoutParams paramsCircleView = new LinearLayout.LayoutParams(minLEDsize, minLEDsize);
@@ -825,17 +665,10 @@ public class MainActivity extends AppCompatActivity {
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
-            gradientDrawable.setColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
 
             mActivityMainBinding.layoutLeft.addView(circleView);
         }
 
-//        RelativeLayout.LayoutParams paramsRight = new RelativeLayout.LayoutParams(minLEDsize, RelativeLayout.LayoutParams.MATCH_PARENT);
-//        paramsRight.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-//        paramsRight.addRule(RelativeLayout.ALIGN_PARENT_END);
-//        paramsRight.addRule(RelativeLayout.BELOW, R.id.layout_top);
-//        paramsRight.addRule(RelativeLayout.ABOVE, R.id.layout_bottom);
-//        mActivityMainBinding.layoutRight.setLayoutParams(paramsRight);
         for (int i = 0; i < rightPixelsCount; i++) {
             View circleView = new View(MainActivity.this);
             LinearLayout.LayoutParams paramsCircleView = new LinearLayout.LayoutParams(minLEDsize, minLEDsize);
@@ -877,7 +710,6 @@ public class MainActivity extends AppCompatActivity {
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
-            gradientDrawable.setColor(Color.argb(currentAlpha, currentRed, currentGreen, currentBlue));
 
             mActivityMainBinding.layoutRight.addView(circleView);
         }
@@ -904,15 +736,5 @@ public class MainActivity extends AppCompatActivity {
         DisplayMetrics metrics = resources.getDisplayMetrics();
         float dp = px / ((float) metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
         return dp;
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        return super.onTouchEvent(event);
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        return super.dispatchTouchEvent(ev);
     }
 }
