@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.databinding.DataBindingUtil;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,6 +19,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -59,9 +61,11 @@ public class MainActivity extends AppCompatActivity {
     private int model, startCorner, allPixelsCount, leftPixelsCount, topPixelsCount, rightPixelsCount, bottomPixelsCount;
     private boolean clockwise;
     private ActivityMainBinding mActivityMainBinding;
-    private boolean isLongClick;
+    private boolean isSmall;
     private long lastTime;
     private boolean isSegment = false;
+    Rect outRect = new Rect();
+    int[] location = new int[2];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
         mActivityMainBinding.imageLightbox.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                isLongClick = false;
                 System.arraycopy(currentPixelsColorsArray, 0, pixelsColorsArray, 0, currentPixelsColorsArray.length);
                 ColorPickerDialogBuilder
                         .with(MainActivity.this)
@@ -468,41 +471,6 @@ public class MainActivity extends AppCompatActivity {
         int topLEDMargin = (width - topPixelsCount * minLEDsize)/(topPixelsCount - 1)/2;
         int bottomLEDMargin = (width - bottomPixelsCount * minLEDsize)/(bottomPixelsCount - 1)/2;
 
-        View.OnClickListener onClickListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (isLongClick) {
-                    if (v.getScaleX() == 0.8f && v.getScaleY() == 0.8f) {
-                        v.setScaleX(1f);
-                        v.setScaleY(1f);
-                    } else {
-                        v.setScaleX(0.8f);
-                        v.setScaleY(0.8f);
-                    }
-                    for (int i = 0; i < allPixelsCount; i++) {
-                        View led = mActivityMainBinding.relativeLayout.findViewWithTag("LED" + i);
-                        if (led.getScaleX() == 0.8f && led.getScaleY() == 0.8f) {
-                            isLongClick = true;
-                            break;
-                        }
-                        isLongClick = false;
-                    }
-                }
-            }
-        };
-
-        View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                if (!isLongClick) {
-                    isLongClick = true;
-                    v.setScaleX(0.8f);
-                    v.setScaleY(0.8f);
-                }
-                return true;
-            }
-        };
-
         for (int i = 0; i < topPixelsCount; i++) {
             final View circleView = new View(MainActivity.this);
             LinearLayout.LayoutParams paramsCircleView = new LinearLayout.LayoutParams(minLEDsize, minLEDsize);
@@ -545,28 +513,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
             }
-            circleView.setOnClickListener(onClickListener);
-            circleView.setOnLongClickListener(onLongClickListener);
-/*
-            View.OnTouchListener onTouchListener = new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_MOVE) {
-                        String tag = (String) v.getTag();
-                        //if (isLongClick) {
-                        //GradientDrawable gradientDrawable = (GradientDrawable) v.getBackground();
-                        //gradientDrawable.mutate();
-                        //gradientDrawable.setColor(Color.GRAY);
-                        //
-                        return true;
-                    } else {
-                        return false;
-                    }
-                    return true;
-                }
-            };
-            circleView.setOnTouchListener(onTouchListener);
-*/
+
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
 
@@ -615,8 +562,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
             }
-            circleView.setOnClickListener(onClickListener);
-            circleView.setOnLongClickListener(onLongClickListener);
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
@@ -660,8 +605,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
             }
-            circleView.setOnClickListener(onClickListener);
-            circleView.setOnLongClickListener(onLongClickListener);
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
@@ -705,14 +648,68 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
             }
-            circleView.setOnClickListener(onClickListener);
-            circleView.setOnLongClickListener(onLongClickListener);
 
             GradientDrawable gradientDrawable = (GradientDrawable) circleView.getBackground();
             gradientDrawable.mutate();
 
             mActivityMainBinding.layoutRight.addView(circleView);
         }
+
+        mActivityMainBinding.frameLayout.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_UP:
+                        //isLongClick = false;
+                        break;
+                    case MotionEvent.ACTION_DOWN:
+                        int touchRawXDown = (int) event.getRawX();
+                        int touchRawYDown = (int) event.getRawY();
+
+                        for (int i = 0; i < allPixelsCount; i++) {
+                            View led = mActivityMainBinding.relativeLayout.findViewWithTag("LED" + i);
+                            if (isViewInBounds(led, touchRawXDown, touchRawYDown)) {
+                                if (led.getScaleX() == 1.0f && led.getScaleY() == 1.0f) {
+                                    isSmall = false;
+                                    led.setScaleX(0.8f);
+                                    led.setScaleY(0.8f);
+                                } else {
+                                    isSmall = true;
+                                    led.setScaleX(1.0f);
+                                    led.setScaleY(1.0f);
+                                }
+                            }
+                        }
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        int touchRawXMove = (int) event.getRawX();
+                        int touchRawYMove = (int) event.getRawY();
+
+                        for (int i = 0; i < allPixelsCount; i++) {
+                            View led = mActivityMainBinding.relativeLayout.findViewWithTag("LED" + i);
+                            if (isViewInBounds(led, touchRawXMove, touchRawYMove)) {
+                                if (isSmall) {
+                                    led.setScaleX(1.0f);
+                                    led.setScaleY(1.0f);
+                                } else {
+                                    led.setScaleX(0.8f);
+                                    led.setScaleY(0.8f);
+                                }
+                            }
+                        }
+                        break;
+                }
+
+                return true;
+            }
+        });
+    }
+
+    private boolean isViewInBounds(View view, int x, int y){
+        view.getDrawingRect(outRect);
+        view.getLocationOnScreen(location);
+        outRect.offset(location[0], location[1]);
+        return outRect.contains(x, y);
     }
 
     private void segmentLEDs(int startPixel, int countPixels, int alpha, int red, int green, int blue) {
