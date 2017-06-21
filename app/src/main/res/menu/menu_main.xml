@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ru.adonixis.lightbox.MainActivity">
+
+    <item
+        android:id="@+id/action_rainbow"
+        android:orderInCategory="1"
+        android:title="@string/action_rainbow"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_rainbow_cycle"
+        android:orderInCategory="2"
+        android:title="@string/action_rainbow_cycle"
+        app:showAsAction="never" />
+
+</menu>
